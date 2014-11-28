@@ -12,6 +12,8 @@
 using namespace std;
 using namespace std::chrono;
 
+void broadcast(char * msg, vector<User*> vec);
+
 void ListeningServer::ReportError(int errorCode, const char * function) {
 	char errMsg[128] = {};
 	errMsg[127] = '\0';
@@ -22,26 +24,56 @@ void ListeningServer::ReportError(int errorCode, const char * function) {
 unsigned __stdcall ClientSession(void *data)
 {
 	/* Client proccess loop */
-	User user;
+	static vector<User*> users;
+	User * user = new User();
 	ListeningServer ls;
 	int nret = 1;
 
-	user.socket = (SOCKET)data;
+	user->socket = (SOCKET)data;
 
 	/* Grab the user's name */
-	ls.recieve(user.socket, user.name, MAX_MESSAGE_SIZE);
-    cout << user.name << " connected." << endl;
+	ls.recieve(user->socket, user->name, MAX_MESSAGE_SIZE);
+	users.push_back(user);
+
+    cout << user->name << " connected." << endl;
+    char * broad = new char[MAX_MESSAGE_SIZE];
+    sprintf(broad,"%s connected.",user->name);
+    broadcast(broad,users);
+    free(broad);
+    
     char * buf = new char[MAX_MESSAGE_SIZE];
 
     while(nret) {
-    	nret = ls.recieve(user.socket, buf, MAX_MESSAGE_SIZE);
-    	if(nret > 0)
-    		printf("[%s]: %s\n",user.name,buf);
-    	else if (nret == SOCKET_ERROR)
+    	nret = ls.recieve(user->socket, buf, MAX_MESSAGE_SIZE);
+    	if(nret > 0) {
+    		char * broad = new char[MAX_MESSAGE_SIZE];
+    		const char * format = "[%s]: %s";
+    		printf(format,user->name,buf);
+    		printf("\n");
+    		sprintf(broad,format,user->name,buf);
+    		broadcast(broad,users);
+    		free(broad);
+    	}
+
+    	else if (nret == SOCKET_ERROR) {
     		break;
+    	}
     }
 
-    printf("%s disconnected!\n",user.name);
+	/* Remove this disconnecting user from the users list */
+	for(vector<User*>::iterator it = users.begin(); it != users.end();) {
+		if((*it)->socket == user->socket) {
+			it = users.erase(it);
+			char * discon = new char[MAX_MESSAGE_SIZE];
+			printf("%s disconnected!\n",user->name);
+			sprintf(discon,"%s disconnected!",user->name);
+			broadcast(discon,users);
+			delete(user);
+			free(discon);
+		}
+		else 
+			it++;
+	}
 }
 
 int ListeningServer::setupListening(int port) {
@@ -111,4 +143,22 @@ int ListeningServer::recieve(SOCKET sock, char * &buffer, int size) {
 	}
 
 	return nret;
+}
+
+void ListeningServer::sendMessage(const char * message, SOCKET cSocket) {
+	int nret;
+	char * buffer = new char[MAX_MESSAGE_SIZE];
+	strcpy(buffer, message);
+	nret = send(cSocket, buffer,strlen(buffer) + 1,0);
+
+	if(nret == SOCKET_ERROR) {
+		ReportError(WSAGetLastError(),"Send Message() Error!");
+	}
+}
+
+void broadcast(char * msg, vector<User*> vec) {
+	ListeningServer ls;
+	for(vector<User*>::iterator i = vec.begin(); i != vec.end(); i++) {
+		ls.sendMessage(msg,(*i)->socket);
+	}
 }

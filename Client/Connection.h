@@ -23,6 +23,7 @@ public:
 	int setupConnection(int port, char* ipAddr);
 	void closeConnection();
 	void sendMessage(const char * message);
+	int recieve(char * &buffer, int size, SOCKET sock);
 
 };
 

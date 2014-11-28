@@ -1,3 +1,4 @@
+
 #ifndef LISTSER_H
 #define LISTSER_H
 
@@ -30,6 +31,7 @@ public:
 	void closeServer();
 	int recieve(SOCKET sock, char * &buffer, int size);
 	char* readLine(SOCKET s, int);
+	void sendMessage(const char * message, SOCKET cSocket);
 };
 
 #endif

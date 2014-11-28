@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include "Connection.h"
 #include <signal.h>
+#include <thread>
+#include <process.h>
 
 using namespace std;
 Connection * connptr = NULL;
@@ -17,6 +19,23 @@ void signal_callback_handler(int signum) {
 	}
 
 	exit(signum);
+}
+
+unsigned __stdcall ServerMessage(void *data) {
+	SOCKET sock = (SOCKET)data;
+	Connection conn;
+	int nret = 1;
+
+	char * recvBuff = new char[MAX_MESSAGE_SIZE];
+	while(nret) {
+		nret = conn.recieve(recvBuff,MAX_MESSAGE_SIZE, sock);
+		printf("%s\n", recvBuff);
+
+		if(nret == SOCKET_ERROR) {
+			free(recvBuff);
+			return 0;
+		}
+	}
 }
 
 int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmd, int nShow) {
@@ -42,6 +61,10 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmd, int nShow)
 	conn.sendMessage(name);
 
 	char msg[MAX_MESSAGE_SIZE] = {};
+
+	/* Create a server message recieveing thread */
+	unsigned threadID;
+    HANDLE hThread = (HANDLE)_beginthreadex(NULL, 0, &ServerMessage, (void*)conn.cSocket, 0, &threadID);
 
 	while(true) {
 		cin.getline(msg,MAX_MESSAGE_SIZE);

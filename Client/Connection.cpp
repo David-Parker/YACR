@@ -68,3 +68,20 @@ void Connection::sendMessage(const char * message) {
 	}
 }
 
+int Connection::recieve(char * &buffer, int size, SOCKET sock) {
+	int nret;
+	int bytesRecieved = 0;
+	char tempBuf[MAX_MESSAGE_SIZE];
+	char curr = '\n';
+	int count = 0;
+
+	memset(buffer,0,size);
+
+	nret = recv(sock, buffer, size, 0);
+	if(nret == SOCKET_ERROR) {
+		/* Fail Silently */
+		//ReportError(WSAGetLastError(), "recieve()");
+	}
+
+	return nret;
+}
